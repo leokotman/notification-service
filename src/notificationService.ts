@@ -16,8 +16,10 @@ class NotificationService {
   private renderer: NotificationRenderer;
   private channel: NotificationChannel;
 
-  constructor(channelType: 'console' | 'webhook' = 'console') {
-    // Future extension point: channelType may come from configuration.
+  constructor(
+    channelType: 'console' | 'email' | 'sms' | 'push' | 'multi' = 'multi',
+  ) {
+    // Extension point: notify via selected channel set by config or runtime.
     this.renderer = new NotificationRenderer();
     this.channel = NotificationFactory.createChannel(channelType);
   }
@@ -25,8 +27,8 @@ class NotificationService {
   /**
    * Main entrypoint for notifying.
    * - Render message
-   * - Send to channel
-   * - Publish to subscribers
+   * - Send to channel or channel router
+   * - Publish to in-app subscribers
    */
   showNotification(rawMessage: string): void {
     const rendered = this.renderer.render(rawMessage);
