@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notification Service - Messaging App</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 600px;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+      text-align: center;
+      font-size: 28px;
+    }
+
+    .message-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .message-form input,
+    .message-form button {
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .message-form input[type="text"]:first-child {
+      flex: 1;
+      border-color: #ddd;
+    }
+
+    .message-form input[type="text"]:first-child:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .message-form input[type="text"]:nth-child(2) {
+      width: 120px;
+    }
+
+    .message-form input[type="text"]:nth-child(2):focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .message-form button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .message-form button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+    }
+
+    .message-form button:active {
+      transform: translateY(0);
+    }
+
+    .notifications-container {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 20px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .notifications-container h2 {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 15px;
+      font-weight: 600;
+    }
+
+    .notification {
+      background: white;
+      border-left: 4px solid #667eea;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+      animation: slideIn 0.3s ease-out;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    .notification:last-child {
+      margin-bottom: 0;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .notification-text {
+      color: #333;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .notification-time {
+      color: #999;
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .status {
+      text-align: center;
+      padding: 10px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .status.connected {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .empty-state {
+      text-align: center;
+      color: #999;
+      padding: 20px;
+      font-size: 14px;
+    }
+
+    .notification-badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>💬 Notification Service</h1>
+
+    <div id="status" class="status disconnected">
+      Connecting to service...
+    </div>
+
+    <div class="message-form">
+      <input type="text" id="messageInput" placeholder="Enter message...">
+      <input type="text" id="senderInput" placeholder="Your name" value="User">
+      <button onclick="sendMessage()">Send</button>
+    </div>
+
+    <div class="notifications-container">
+      <h2>
+        Notifications
+        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+      </h2>
+      <div id="notificationsList" class="empty-state">
+        No notifications yet...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let notificationCount = 0;
+
+    /**
+     * Client-side notification UI
+     */
+    class NotificationUI {
+      constructor() {
+        this.notifications = [];
+        this.maxNotifications = 50;
+      }
+
+      /**
+       * Show a notification in the UI
+       * @param {string} message - The notification message
+       */
+      showNotification(message) {
+        const notification = {
+          message,
+          timestamp: new Date().toLocaleTimeString()
+        };
+
+        this.notifications.unshift(notification);
+
+        // Keep only recent notifications
+        if (this.notifications.length > this.maxNotifications) {
+          this.notifications = this.notifications.slice(0, this.maxNotifications);
+        }
+
+        this.render();
+        this.updateBadge();
+
+        // Browser notification if permitted
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('New Message', {
+            body: message,
+            icon: '💬'
+          });
+        }
+      }
+
+      render() {
+        const list = document.getElementById('notificationsList');
+        
+        if (this.notifications.length === 0) {
+          list.innerHTML = '<div class="empty-state">No notifications yet...</div>';
+          return;
+        }
+
+        list.innerHTML = this.notifications.map((note, index) => `
+          <div class="notification">
+            <div class="notification-text">${escapeHtml(note.message)}</div>
+            <div class="notification-time">${note.timestamp}</div>
+          </div>
+        `).join('');
+      }
+
+      updateBadge() {
+        const badge = document.getElementById('notificationBadge');
+        if (this.notifications.length > 0) {
+          notificationCount = this.notifications.length;
+          badge.textContent = notificationCount > 99 ? '99+' : notificationCount;
+          badge.style.display = 'inline-flex';
+          document.title = `(${notificationCount}) Notification Service`;
+        }
+      }
+    }
+
+    const notificationUI = new NotificationUI();
+
+    /**
+     * Escape HTML to prevent XSS
+     */
+    function escapeHtml(text) {
+      const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    /**
+     * Send a message to the server
+     */
+    async function sendMessage() {
+      const messageInput = document.getElementById('messageInput');
+      const senderInput = document.getElementById('senderInput');
+      
+      const message = messageInput.value.trim();
+      const sender = senderInput.value.trim() || 'User';
+
+      if (!message) return;
+
+      try {
+        const response = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message, sender })
+        });
+
+        if (response.ok) {
+          messageInput.value = '';
+          messageInput.focus();
+        }
+      } catch (error) {
+        console.error('Error sending message:', error);
+      }
+    }
+
+    /**
+     * Connect to notification stream (Server-Sent Events)
+     */
+    function connectToNotifications() {
+      const statusEl = document.getElementById('status');
+      const eventSource = new EventSource('/api/subscribe');
+
+      eventSource.onopen = () => {
+        statusEl.className = 'status connected';
+        statusEl.textContent = '✓ Connected to service';
+      };
+
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.notification) {
+          notificationUI.showNotification(data.notification);
+        }
+      };
+
+      eventSource.onerror = () => {
+        statusEl.className = 'status disconnected';
+        statusEl.textContent = '✗ Disconnected - reconnecting...';
+        eventSource.close();
+        
+        // Reconnect after 3 seconds
+        setTimeout(connectToNotifications, 3000);
+      };
+    }
+
+    /**
+     * Request browser notification permission
+     */
+    function requestNotificationPermission() {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    }
+
+    /**
+     * Allow Enter key to send message
+     */
+    document.getElementById('messageInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') sendMessage();
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      requestNotificationPermission();
+      connectToNotifications();
+    });
+  </script>
+</body>
+</html>
