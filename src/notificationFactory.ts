@@ -3,6 +3,7 @@ import { EmailNotificationProvider } from './emailNotificationProvider';
 import { NotificationChannel } from './notificationInterface';
 import { NotificationChannelRouter } from './notificationChannelRouter';
 import { PushNotificationProvider } from './pushNotificationProvider';
+import { ResilientNotificationChannel } from './resilientNotificationChannel';
 import { SmsNotificationProvider } from './smsNotificationProvider';
 
 /**
@@ -14,25 +15,51 @@ export class NotificationFactory {
   static createChannel(
     channelType: 'console' | 'email' | 'sms' | 'push' | 'multi' = 'console',
   ): NotificationChannel {
+    const consoleChannel = new ConsoleNotificationChannel();
+
     switch (channelType) {
       case 'console':
-        return new ConsoleNotificationChannel();
+        return new ResilientNotificationChannel(consoleChannel);
       case 'email':
-        return new EmailNotificationProvider();
+        return new ResilientNotificationChannel(
+          new EmailNotificationProvider(),
+          consoleChannel,
+        );
       case 'sms':
-        return new SmsNotificationProvider();
+        return new ResilientNotificationChannel(
+          new SmsNotificationProvider(),
+          consoleChannel,
+        );
       case 'push':
-        return new PushNotificationProvider();
+        return new ResilientNotificationChannel(
+          new PushNotificationProvider(),
+          consoleChannel,
+        );
       case 'multi': {
         const router = new NotificationChannelRouter();
-        router.register(new ConsoleNotificationChannel());
-        router.register(new EmailNotificationProvider());
-        router.register(new SmsNotificationProvider());
-        router.register(new PushNotificationProvider());
+        router.register(
+          new ResilientNotificationChannel(
+            new EmailNotificationProvider(),
+            consoleChannel,
+          ),
+        );
+        router.register(
+          new ResilientNotificationChannel(
+            new SmsNotificationProvider(),
+            consoleChannel,
+          ),
+        );
+        router.register(
+          new ResilientNotificationChannel(
+            new PushNotificationProvider(),
+            consoleChannel,
+          ),
+        );
+        router.register(new ResilientNotificationChannel(consoleChannel));
         return router;
       }
       default:
-        return new ConsoleNotificationChannel();
+        return new ResilientNotificationChannel(consoleChannel);
     }
   }
 }
