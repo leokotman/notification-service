@@ -35,12 +35,12 @@ app.post('/api/messages', (req, res) => {
   }
 
   const notification = `New message from ${sender || 'Someone'}: ${message}`;
-  
+
   // Show notification via service
   notificationService.showNotification(notification);
 
   // Send to all connected SSE clients
-  clients.forEach(res => {
+  clients.forEach((res) => {
     res.write(`data: ${JSON.stringify({ notification })}\n\n`);
   });
 
@@ -57,10 +57,12 @@ app.get('/api/subscribe', (req, res) => {
 
   clients.push(res);
 
-  res.write(`data: ${JSON.stringify({ message: 'Connected to notification service' })}\n\n`);
+  res.write(
+    `data: ${JSON.stringify({ message: 'Connected to notification service' })}\n\n`,
+  );
 
   req.on('close', () => {
-    clients = clients.filter(client => client !== res);
+    clients = clients.filter((client) => client !== res);
   });
 });
 

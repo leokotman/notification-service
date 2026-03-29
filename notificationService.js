@@ -14,9 +14,9 @@ class NotificationService {
    */
   showNotification(message) {
     console.log(`[NOTIFICATION] ${message}`);
-    
+
     // Notify all subscribers (WebSocket connections, etc.)
-    this.subscriptions.forEach(callback => {
+    this.subscriptions.forEach((callback) => {
       try {
         callback(message);
       } catch (error) {
@@ -32,7 +32,7 @@ class NotificationService {
   subscribe(callback) {
     this.subscriptions.push(callback);
     return () => {
-      this.subscriptions = this.subscriptions.filter(sub => sub !== callback);
+      this.subscriptions = this.subscriptions.filter((sub) => sub !== callback);
     };
   }
 }
