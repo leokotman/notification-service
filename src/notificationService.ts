@@ -3,16 +3,16 @@
  * Handles showing notifications for new messages
  */
 
+type NotificationCallback = (message: string) => void;
+
 class NotificationService {
-  constructor() {
-    this.subscriptions = [];
-  }
+  private subscriptions: NotificationCallback[] = [];
 
   /**
    * Show a notification for a received message
    * @param {string} message - The notification message to display
    */
-  showNotification(message) {
+  showNotification(message: string): void {
     console.log(`[NOTIFICATION] ${message}`);
 
     // Notify all subscribers (WebSocket connections, etc.)
@@ -29,12 +29,13 @@ class NotificationService {
    * Subscribe to notification events
    * @param {function} callback - Function to call when notification occurs
    */
-  subscribe(callback) {
+  subscribe(callback: NotificationCallback): () => void {
     this.subscriptions.push(callback);
+
     return () => {
       this.subscriptions = this.subscriptions.filter((sub) => sub !== callback);
     };
   }
 }
 
-module.exports = new NotificationService();
+export default new NotificationService();
