@@ -33,8 +33,23 @@ class NotificationService {
   showNotification(rawMessage: string): void {
     const rendered = this.renderer.render(rawMessage);
 
-    // This is the direct channel side effect; supports pluggable channel implementations.
-    this.channel.send(rendered);
+    try {
+      // This is the direct channel side effect; supports pluggable channel implementations.
+      this.channel.send(rendered);
+    } catch (error) {
+      // Defensive handling when channel path throws unexpectedly.
+      console.error('NotificationService: section failed:', error);
+      // Attempt fallback/resend via scheduler path.
+      const fallbackChannel = NotificationFactory.createChannel('console');
+      try {
+        fallbackChannel.send(rendered);
+      } catch (fallbackError) {
+        console.error(
+          'NotificationService: fallback send also failed:',
+          fallbackError,
+        );
+      }
+    }
 
     // Side-effect hook to notify in-process listeners (e.g. SSE clients).
     this.publish(rendered);
