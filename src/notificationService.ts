@@ -1,34 +1,53 @@
+import { NotificationChannel } from './notificationInterface';
+import { NotificationFactory } from './notificationFactory';
+import { NotificationRenderer } from './notificationRenderer';
+
+export type NotificationCallback = (notification: string) => void;
+
 /**
- * Notification Service Module
- * Handles showing notifications for new messages
+ * NotificationService
+ *
+ * This orchestration layer is intentionally over-engineered for an example.
+ * It uses a factory to create channels and a renderer to format messages, then
+ * publishes through a subscription model.
  */
-
-type NotificationCallback = (message: string) => void;
-
 class NotificationService {
   private subscriptions: NotificationCallback[] = [];
+  private renderer: NotificationRenderer;
+  private channel: NotificationChannel;
+
+  constructor(channelType: 'console' | 'webhook' = 'console') {
+    // Future extension point: channelType may come from configuration.
+    this.renderer = new NotificationRenderer();
+    this.channel = NotificationFactory.createChannel(channelType);
+  }
 
   /**
-   * Show a notification for a received message
-   * @param {string} message - The notification message to display
+   * Main entrypoint for notifying.
+   * - Render message
+   * - Send to channel
+   * - Publish to subscribers
    */
-  showNotification(message: string): void {
-    console.log(`[NOTIFICATION] ${message}`);
+  showNotification(rawMessage: string): void {
+    const rendered = this.renderer.render(rawMessage);
 
-    // Notify all subscribers (WebSocket connections, etc.)
+    // This is the direct channel side effect; supports pluggable channel implementations.
+    this.channel.send(rendered);
+
+    // Side-effect hook to notify in-process listeners (e.g. SSE clients).
+    this.publish(rendered);
+  }
+
+  private publish(notification: string): void {
     this.subscriptions.forEach((callback) => {
       try {
-        callback(message);
+        callback(notification);
       } catch (error) {
-        console.error('Error notifying subscriber:', error);
+        console.error('Error in notification subscriber:', error);
       }
     });
   }
 
-  /**
-   * Subscribe to notification events
-   * @param {function} callback - Function to call when notification occurs
-   */
   subscribe(callback: NotificationCallback): () => void {
     this.subscriptions.push(callback);
 
