@@ -6,6 +6,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import notificationService from './notificationService';
+import notificationServiceMicro from './notificationServiceMicro';
 
 interface MessageBody {
   message?: string;
@@ -40,8 +41,11 @@ app.post(
 
     const notification = `New message from ${sender || 'Someone'}: ${message}`;
 
-    // Show notification via over-engineered service pipeline
+    // Legacy in-process notification service (still available for direct usage)
     notificationService.showNotification(notification);
+
+    // Microservice-style event-based path
+    notificationServiceMicro.sendNotification(notification);
 
     res.json({ success: true, notification });
   },

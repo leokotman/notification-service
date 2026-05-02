@@ -75,3 +75,62 @@ class NotificationService {
 }
 
 export default new NotificationService();
+
+interface OrderItem {
+  price: number;
+  category: string;
+}
+
+interface Order {
+  items: OrderItem[];
+  isFlagged: boolean;
+}
+
+interface User {
+  role: string;
+  subscriptionStatus: string;
+  logins: number;
+}
+
+export function processOrder(order: Order, user: User): void {
+  const hasItems = order.items.length > 0;
+  const isPrivilegedUser = isActiveAdminUser(user);
+  const isOrderProcessable = !order.isFlagged;
+
+  if (hasItems && isPrivilegedUser && isOrderProcessable) {
+    const total = calculateOrderTotal(order);
+
+    if (total > 500) {
+      // send notification and update database...
+    }
+    const finalizationMsg = getFinalizationMessage(order);
+    // Optionally send as notification:
+    // NotificationService.showNotification(finalizationMsg);
+    console.log(finalizationMsg);
+  }
+}
+
+function getFinalizationMessage(order: Order): string {
+  const message = `Order finalized with ${order.items.length} item(s) totaling $${calculateOrderTotal(order).toFixed(2)}`;
+  return message;
+}
+
+function isActiveAdminUser(user: User): boolean {
+  return (
+    user.role === 'admin' ||
+    (user.subscriptionStatus === 'active' && user.logins > 10)
+  );
+}
+
+function calculateItemPrice(item: OrderItem): number {
+  return item.price > 100 && item.category !== 'digital'
+    ? item.price * 0.9
+    : item.price;
+}
+
+function calculateOrderTotal(order: Order): number {
+  return order.items.reduce(
+    (total, item) => total + calculateItemPrice(item),
+    0,
+  );
+}
