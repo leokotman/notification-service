@@ -6,6 +6,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import notificationService from './notificationService';
+import notificationServiceMicro from './notificationServiceMicro';
 
 interface MessageBody {
   message?: string;
@@ -18,9 +19,6 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
-
-// Store connected clients for Server-Sent Events (SSE)
-let clients: Response[] = [];
 
 /**
  * GET / - Serve the main HTML page
@@ -43,13 +41,11 @@ app.post(
 
     const notification = `New message from ${sender || 'Someone'}: ${message}`;
 
-    // Show notification via service
+    // Legacy in-process notification service (still available for direct usage)
     notificationService.showNotification(notification);
 
-    // Send to all connected SSE clients
-    clients.forEach((client) => {
-      client.write(`data: ${JSON.stringify({ notification })}\n\n`);
-    });
+    // Microservice-style event-based path
+    notificationServiceMicro.sendNotification(notification);
 
     res.json({ success: true, notification });
   },
@@ -64,14 +60,20 @@ app.get('/api/subscribe', (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  clients.push(res);
+  // Subscribe to the NotificationService publish mechanism.
+  const unsubscribe = notificationService.subscribe((renderedNotification) => {
+    res.write(
+      `data: ${JSON.stringify({ notification: renderedNotification })}\n\n`,
+    );
+  });
 
+  // Send a connection acknowledgement.
   res.write(
-    `data: ${JSON.stringify({ message: 'Connected to notification service' })}\n\n`,
+    `data: ${JSON.stringify({ message: 'Connected to over-engineered notification service' })}\n\n`,
   );
 
   req.on('close', () => {
-    clients = clients.filter((client) => client !== res);
+    unsubscribe();
   });
 });
 
